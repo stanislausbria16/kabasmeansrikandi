@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="site-title-meta">KABAS MEAN - Panduan Resmi SRIKANDI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            background-color: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+        .nav-active {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #0f172a !important;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
+        }
+        @media print {
+            body { background: white !important; color: black !important; }
+            header, aside, #mobile-overlay, footer, button, .no-print { display: none !important; }
+            main { overflow: visible !important; display: block !important; padding: 0 !important; }
+            #main-card-pane { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 flex flex-col min-h-screen custom-scrollbar">
+
+    <script>
+        // Variabel Global
+        let currentSection = 'beranda';
+        let isMobileSidebarOpen = false;
+
+        // Nilai Default Sistem (Bisa diubah langsung di sini)
+        const defaultLogoText = 'KM';
+        const siteName = 'KABAS MEAN';
+        const siteSubtitle = 'PANDUAN APLIKASI SRIKANDI';
+        const homeImageUrl = 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80';
+
+        const defaultMentors = [
+            { id: '1', name: 'Stanislaus Bria, S.Fil', nip: '199009162025061001', role: 'Admin Instansi', phone: '085126524343', status: 'Aktif' },
+        ];
+
+        // Ubah teks beranda di sini
+        const defaultHomeText = `<p class="mb-4">Selamat datang di <strong>Portal Informasi KABAS MEAN</strong>, wadah panduan terintegrasi untuk pendampingan teknis dan optimalisasi aplikasi SRIKANDI secara dinamis.</p><p>Silakan manfaatkan menu navigasi di sebelah kiri untuk mempelajari hak akses, manajemen sertifikat elektronik (TTE), serta pengelolaan naskah masuk dan keluar secara berkala.</p>`;
+        
+        // Ubah isi konten panduan pada masing-masing menu di bawah ini
+        const defaultContent = {
+            'beranda': { title: 'Selamat Datang', body: defaultHomeText, links: [] },
+            'informasi': { title: 'Informasi Umum SRIKANDI', body: `<p><strong>SRIKANDI (Sistem Informasi Kearsipan Dinamis Terintegrasi)</strong> adalah aplikasi kearsipan dinamis yang diluncurkan berdasarkan Peraturan Presiden Nomor 95 Tahun 2018 tentang Sistem Pemerintahan Berbasis Elektronik (SPBE).</p>`, links: [{ text: 'AKSES SRIKANDI', url: 'https://srikandi.arsip.go.id/auth/login' }] },
+            'admin-instansi': { title: 'Hak Akses: Admin Instansi', body: '<p>Admin Instansi memegang kontrol tingkat tertinggi pada lingkungan instansi masing-masing di aplikasi SRIKANDI.</p>', links: [] },
+            'admin-satker': { title: 'Hak Akses: Admin Satker', body: '<p>Admin Satker bertugas mengelola administrasi kearsipan tingkat Satuan Kerja.</p>', links: [] },
+            'tata-usaha': { title: 'Hak Akses: Tata Usaha (TU)', body: '<p>Peran Tata Usaha berfokus pada pengendalian kendali naskah keluar dan koordinasi verifikasi naskah.</p>', links: [] },
+            'pencatat-surat': { title: 'Hak Akses: Pencatat Surat', body: '<p>Bertanggung jawab terhadap registrasi seluruh dokumen fisik atau eksternal yang diterima instansi.</p>', links: [] },
+            'user': { title: 'Hak Akses: Pengguna / Staf', body: '<p>User menjalankan instruksi kerja harian, menerima disposisi, dan mendraf konsep naskah keluar.</p>', links: [] },
+            'tte-pengajuan': { title: 'TTE: Pengajuan Email Dinas', body: '<p>Langkah-langkah registrasi awal penerbitan email dinas resmi pemerintah.</p>', links: [] },
+            'tte-aktivasi': { title: 'TTE: Aktivasi Email Dinas', body: '<p>Panduan aktivasi kotak masuk email dinas baru via tautan aktivasi sistem.</p>', links: [] },
+            'tte-registrasi': { title: 'TTE: Registrasi Sertifikat BSrE', body: '<p>Prosedur sinkronisasi NIK dan penyiapan biometrik di sistem BSrE.</p>', links: [] },
+            'tte-passphrase': { title: 'TTE: Membuat Passphrase', body: '<p class="text-amber-500 font-medium">⚠️ PENTING: Passphrase adalah kunci sandi pembubuhan TTE.</p>', links: [] },
+            'tte-pembubuhan': { title: 'TTE: Pembubuhan Tanda Tangan', body: '<p>Tata cara input passphrase secara aman pada menu persetujuan naskah.</p>', links: [] },
+            'nm-registrasi': { title: 'Naskah Masuk: Registrasi Naskah', body: '<p>Layanan registrasi naskah masuk eksternal.</p>', links: [] },
+            'nm-daftar': { title: 'Naskah Masuk: Daftar Naskah', body: '<p>Menampilkan seluruh arsip surat masuk yang sudah diregistrasi.</p>', links: [] },
+            'nm-agenda': { title: 'Naskah Masuk: Agenda Surat', body: '<p>Fasilitas pembuatan agenda otomatis.</p>', links: [] },
+            'nm-tembusan': { title: 'Naskah Masuk: Tembusan Surat', body: '<p>Melihat dan mengarsipkan surat masuk tembusan.</p>', links: [] },
+            'nm-log': { title: 'Naskah Masuk: Log Riwayat Surat', body: '<p>Catatan lengkap mengenai waktu pendaftaran surat masuk.</p>', links: [] },
+            'nm-disposisi': { title: 'Naskah Masuk: Disposisi Surat', body: '<p>Menu bagi Pimpinan untuk mengarahkan dokumen naskah masuk.</p>', links: [] },
+            'nm-koordinasi': { title: 'Naskah Masuk: Koordinasi', body: '<p>Fitur koordinasi horizontal antar-staf.</p>', links: [] },
+            'nm-arahan': { title: 'Naskah Masuk: Arahan Pimpinan', body: '<p>Instruksi khusus yang dilekatkan langsung oleh pejabat.</p>', links: [] },
+            'nk-registrasi': { title: 'Naskah Keluar: Registrasi Draft', body: '<p>Langkah pembuatan konsep surat baru.</p>', links: [] },
+            'nk-daftar': { title: 'Naskah Keluar: Daftar Naskah', body: '<p>Melihat perkembangan draf naskah keluar yang sedang berjalan.</p>', links: [] },
+            'nk-pemberkasan': { title: 'Naskah Keluar: Pemberkasan', body: '<p>Proses penataan berkas dan pengelompokan naskah keluar.</p>', links: [] },
+            'nk-log': { title: 'Naskah Keluar: Log Naskah Keluar', body: '<p>Melacak jejak audit draf surat keluar.</p>', links: [] },
+            'nk-ttd': { title: 'Naskah Keluar: Persetujuan & TTD', body: '<p>Laman khusus pejabat penandatangan.</p>', links: [] },
+            'pemberkasan': { title: 'Pemberkasan Arsip', body: '<p>Panduan mengenai tata cara manajemen pemberkasan pada aplikasi SRIKANDI.</p>', links: [] },
+            'infografis': { title: 'Infografis Panduan SRIKANDI', body: '<p>Kumpulan materi infografis tata cara penggunaan sistem.</p>', links: [] },
+            'video': { title: 'Video Tutorial Penggunaan', body: '<p>Silakan akses berbagai video tutorial panduan SRIKANDI melalui tautan eksternal di bawah ini.</p>', links: [] }
+        };
+
+        let localStateContents = { ...defaultContent };
+    </script>
+
+    <div id="toast-wrapper" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <header class="bg-slate-900 border-b border-slate-800 text-white flex justify-between items-center p-4 shadow-md md:hidden">
+        <div class="flex items-center space-x-3">
+            <div id="mobile-logo-wrapper" class="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center font-black text-slate-950 overflow-hidden shadow-lg shadow-amber-500/10">KM</div>
+            <div>
+                <span class="font-black text-sm block tracking-wide uppercase dynamic-site-name">KABAS MEAN</span>
+                <span class="text-[9px] text-slate-400 block tracking-wider dynamic-site-sub">PANDUAN APLIKASI SRIKANDI</span>
+            </div>
+        </div>
+        <button onclick="toggleMobileSidebar()" class="text-white hover:text-amber-500 transition focus:outline-none p-1">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+    </header>
+
+    <div class="flex flex-1 relative">
+
+        <aside id="sidebar" class="bg-slate-900 text-slate-300 w-72 flex-shrink-0 flex flex-col border-r border-slate-800 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 z-50 shadow-2xl md:overflow-hidden">
+            <div class="p-6 border-b border-slate-800/80 bg-slate-950/40 flex flex-col items-center text-center">
+                <div id="site-logo-container" class="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl mb-4 relative overflow-hidden group border border-slate-700 bg-slate-800">
+                    <span id="site-logo-txt" class="font-extrabold text-3xl text-amber-400">KM</span>
+                    <img id="site-logo-img" class="hidden w-full h-full object-cover absolute inset-0" src="" alt="Logo">
+                </div>
+                <h1 class="font-extrabold text-lg tracking-wider text-white dynamic-site-name uppercase">KABAS MEAN</h1>
+                <p class="text-[9px] text-amber-400 font-bold uppercase tracking-widest mt-1.5 dynamic-site-sub">PANDUAN APLIKASI SRIKANDI</p>
+                
+                <div class="mt-4 flex items-center gap-2.5 p-2 bg-slate-900/60 border border-slate-800 rounded-xl w-full">
+                    <div class="w-9 h-9 rounded-lg bg-slate-800 overflow-hidden relative border border-slate-700 flex-shrink-0">
+                        <i data-lucide="user" class="w-5 h-5 text-slate-400 absolute inset-0 m-auto" id="avatar-placeholder-icon"></i>
+                    </div>
+                    <div class="text-left min-w-0 flex-1">
+                        <p class="text-xs font-bold text-slate-200 truncate">Pengguna Umum</p>
+                        <p class="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Online</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-grow overflow-y-auto p-4 space-y-1.5 custom-scrollbar bg-slate-900/50">
+                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Layanan Utama</span>
+
+                <button onclick="navigate('beranda')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-beranda">
+                    <i data-lucide="home" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Beranda Utama</span>
+                </button>
+                <button onclick="navigate('informasi')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-informasi">
+                    <i data-lucide="info" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Informasi Umum</span>
+                </button>
+                <button onclick="navigate('mentors')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-mentors">
+                    <i data-lucide="users-2" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Pendamping Teknis</span>
+                </button>
+
+                <div>
+                    <button onclick="toggleDropdown('hak-akses')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="shield-alert" class="w-4 h-4 text-amber-500"></i> Hak Akses</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-hak-akses"></i>
+                    </button>
+                    <div id="drop-hak-akses" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800">
+                        <button onclick="navigate('admin-instansi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-admin-instansi">Admin Instansi</button>
+                        <button onclick="navigate('admin-satker')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-admin-satker">Admin Satker</button>
+                        <button onclick="navigate('tata-usaha')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tata-usaha">Tata Usaha</button>
+                        <button onclick="navigate('pencatat-surat')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-pencatat-surat">Pencatat Surat</button>
+                        <button onclick="navigate('user')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-user">User / Pengguna</button>
+                    </div>
+                </div>
+
+                <div>
+                    <button onclick="toggleDropdown('tte')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="fingerprint" class="w-4 h-4 text-amber-500"></i> TTE (Sertifikat)</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-tte"></i>
+                    </button>
+                    <div id="drop-tte" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800">
+                        <button onclick="navigate('tte-pengajuan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-pengajuan">Pengajuan Email Dinas</button>
+                        <button onclick="navigate('tte-aktivasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-aktivasi">Aktivasi Email Dinas</button>
+                        <button onclick="navigate('tte-registrasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-registrasi">Registrasi Sertifikat</button>
+                        <button onclick="navigate('tte-passphrase')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-passphrase">Buat Passphrase</button>
+                        <button onclick="navigate('tte-pembubuhan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-pembubuhan">Pembubuhan TTE</button>
+                    </div>
+                </div>
+
+                <div>
+                    <button onclick="toggleDropdown('naskah-masuk')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="folder-input" class="w-4 h-4 text-amber-500"></i> Naskah Masuk</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-naskah-masuk"></i>
+                    </button>
+                    <div id="drop-naskah-masuk" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800 max-h-40 overflow-y-auto custom-scrollbar">
+                        <button onclick="navigate('nm-registrasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-registrasi">Registrasi Masuk</button>
+                        <button onclick="navigate('nm-daftar')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-daftar">Daftar Masuk</button>
+                        <button onclick="navigate('nm-agenda')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-agenda">Agenda</button>
+                        <button onclick="navigate('nm-tembusan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-tembusan">Tembusan</button>
+                        <button onclick="navigate('nm-log')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-log">Log Naskah Masuk</button>
+                        <button onclick="navigate('nm-disposisi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-disposisi">Disposisi</button>
+                        <button onclick="navigate('nm-koordinasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-koordinasi">Koordinasi</button>
+                        <button onclick="navigate('nm-arahan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-arahan">Arahan</button>
+                    </div>
+                </div>
+
+                <div>
+                    <button onclick="toggleDropdown('naskah-keluar')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="folder-output" class="w-4 h-4 text-amber-500"></i> Naskah Keluar</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-naskah-keluar"></i>
+                    </button>
+                    <div id="drop-naskah-keluar" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800">
+                        <button onclick="navigate('nk-registrasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-registrasi">Registrasi Keluar</button>
+                        <button onclick="navigate('nk-daftar')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-daftar">Daftar Keluar</button>
+                        <button onclick="navigate('nk-pemberkasan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-pemberkasan">Pemberkasan</button>
+                        <button onclick="navigate('nk-log')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-log">Log Keluar</button>
+                        <button onclick="navigate('nk-ttd')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-ttd">Persetujuan & TTD</button>
+                    </div>
+                </div>
+
+                <button onclick="navigate('pemberkasan')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-pemberkasan">
+                    <i data-lucide="archive" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Pemberkasan</span>
+                </button>
+
+                <button onclick="navigate('infografis')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-infografis">
+                    <i data-lucide="image" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Infografis Panduan</span>
+                </button>
+
+                <button onclick="navigate('video')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-video">
+                    <i data-lucide="clapperboard" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Video Tutorial</span>
+                </button>
+
+                <div class="pt-4 no-print pb-6">
+                    <a href="https://wa.me/message/I5DFQTSJBHCZL1" target="_blank" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-slate-950 bg-amber-400 hover:bg-amber-500 transition font-bold text-xs shadow-lg shadow-amber-500/10">
+                        <i data-lucide="phone-call" class="w-4 h-4"></i> <span>Hubungi Admin</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <div id="mobile-overlay" onclick="toggleMobileSidebar()" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-30 md:hidden"></div>
+
+        <main class="flex-grow flex flex-col min-h-0 overflow-y-auto overflow-x-hidden bg-[#0d121f] custom-scrollbar">
+            
+            <div class="flex-grow p-4 md:p-8 flex justify-center">
+                <div class="max-w-4xl w-full bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-2xl p-6 md:p-10 flex flex-col justify-between" id="main-card-pane">
+                    <div id="content-container" class="space-y-6">
+                    </div>
+                </div>
+            </div>
+
+            <footer class="bg-slate-950 text-slate-500 text-center py-6 text-xs border-t border-slate-800/80 flex-shrink-0">
+                <p>&copy; 2026 <span class="dynamic-site-name text-slate-300 font-bold">KABAS MEAN</span> - Kanal Bantuan & Media Panduan SRIKANDI</p>
+                <p class="mt-1">Dibuat dengan penuh dedikasi: <span class="text-amber-500 font-bold">Stanislaus Bria, S.Fil</span></p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const wrapper = document.getElementById('toast-wrapper');
+            const toast = document.createElement('div');
+            toast.className = `flex items-center gap-3 p-4 rounded-xl shadow-xl transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto min-w-[280px] max-w-sm border ${type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800' : 'bg-rose-950/90 text-rose-300 border-rose-800'}`;
+            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5 flex-shrink-0 ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}"></i><span class="text-xs font-semibold leading-relaxed">${message}</span>`;
+            wrapper.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => { toast.classList.add('translate-y-2', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 3500);
+        }
+
+        function applyStaticIdentity() {
+            document.querySelectorAll('.dynamic-site-name').forEach(el => el.innerText = siteName);
+            document.querySelectorAll('.dynamic-site-sub').forEach(el => el.innerText = siteSubtitle);
+            document.getElementById('site-title-meta').innerText = siteName + " - " + siteSubtitle;
+
+            const txtLogo = document.getElementById('site-logo-txt');
+            const imgLogo = document.getElementById('site-logo-img');
+            const mobileLogo = document.getElementById('mobile-logo-wrapper');
+            
+            if (homeImageUrl && homeImageUrl.startsWith('http')) {
+                txtLogo.classList.add('hidden');
+                imgLogo.src = homeImageUrl;
+                imgLogo.classList.remove('hidden');
+            } else {
+                txtLogo.classList.remove('hidden');
+                txtLogo.innerText = defaultLogoText;
+                imgLogo.classList.add('hidden');
+            }
+            if (mobileLogo) mobileLogo.innerText = defaultLogoText;
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar'), overlay = document.getElementById('mobile-overlay');
+            isMobileSidebarOpen = !isMobileSidebarOpen;
+            if (isMobileSidebarOpen) { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); } 
+            else { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+        }
+
+        function toggleDropdown(id) {
+            const elem = document.getElementById('drop-' + id), icon = document.getElementById('icon-' + id);
+            if (elem.classList.contains('hidden')) { elem.classList.remove('hidden'); icon.style.transform = 'rotate(180deg)'; } 
+            else { elem.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; }
+        }
+
+        function navigate(section) {
+            currentSection = section;
+            document.querySelectorAll('aside nav button').forEach(btn => btn.classList.remove('nav-active'));
+            const activeBtn = document.getElementById('menu-btn-' + section);
+            if (activeBtn) activeBtn.classList.add('nav-active');
+            if (isMobileSidebarOpen) toggleMobileSidebar();
+            renderContent();
+        }
+
+        function renderContent() {
+            const container = document.getElementById('content-container');
+            if (currentSection === 'mentors') { container.innerHTML = renderMentorsCRUD(); lucide.createIcons(); return; }
+
+            let pageData = localStateContents[currentSection] || { title: 'Modul Belum Terdaftar', body: '<p>Konten sedang dipersiapkan.</p>', links: [] };
+
+            let html = `<div class="space-y-6">`;
+            if (currentSection === 'beranda' && homeImageUrl) {
+                html += `
+                    <div class="w-full h-52 md:h-80 rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative group">
+                        <img src="${homeImageUrl}" class="w-full h-full object-cover group-hover:scale-105 transition duration-700">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent p-6 flex flex-col justify-end">
+                            <h3 class="text-xl md:text-2xl font-black text-white uppercase">${pageData.title}</h3>
+                        </div>
+                    </div>`;
+            }
+            html += `
+                <div class="border-b border-slate-800/80 pb-4 flex justify-between items-center">
+                    <h2 class="text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+                        <span class="w-1.5 h-6 bg-amber-500 rounded-full inline-block"></span> ${pageData.title}
+                    </h2>
+                </div>
+                <div class="prose prose-invert max-w-none text-slate-300 leading-relaxed text-sm md:text-base space-y-4">${pageData.body}</div>`;
+
+            if (pageData.links && pageData.links.length > 0) {
+                html += `<div class="pt-6 border-t border-slate-800/85 flex flex-wrap gap-3">`;
+                pageData.links.forEach(link => {
+                    html += `<a href="${link.url}" target="_blank" class="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-700 text-amber-400 font-extrabold text-xs rounded-xl inline-flex items-center gap-2 transition"><span>${link.text}</span> <i data-lucide="external-link" class="w-4 h-4"></i></a>`;
+                });
+                html += `</div>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html; lucide.createIcons();
+        }
+
+        // --- SISTEM PENDAMPING (MENTORS) ---
+        function renderMentorsCRUD() {
+            const list = defaultMentors;
+            let rows = '';
+            list.forEach(m => {
+                rows += `
+                    <tr class="border-b border-slate-800/60 hover:bg-slate-900/30 text-xs">
+                        <td class="p-4 font-bold text-slate-200">${m.name}</td>
+                        <td class="p-4 text-slate-400 font-mono">${m.nip}</td>
+                        <td class="p-4 text-slate-300">${m.role}</td>
+                        <td class="p-4 font-semibold text-amber-400">${m.phone}</td>
+                        <td class="p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.status === 'Aktif' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}">${m.status}</span></td>
+                    </tr>`;
+            });
+
+            return `
+                <div class="space-y-6" id="mentors-capture-area">
+                    <div class="border-b border-slate-800 pb-4 flex justify-between items-center">
+                        <h2 class="text-xl md:text-2xl font-black text-white flex items-center gap-2"><span class="w-1.5 h-6 bg-amber-500 rounded-full"></span> Daftar Pendamping Teknis</h2>
+                        <div class="flex gap-2 no-print">
+                            <button onclick="exportMentorsToPDF()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700"><i data-lucide="printer" class="w-4 h-4"></i> Cetak</button>
+                        </div>
+                    </div>
+                    <div class="border border-slate-850 bg-slate-950/20 rounded-2xl overflow-hidden shadow-xl">
+                        <table class="w-full text-left border-collapse">
+                            <thead><tr class="bg-slate-950 text-slate-400 font-bold border-b border-slate-800"><th class="p-4 text-xs uppercase">Nama / Jabatan</th><th class="p-4 text-xs uppercase">NIP</th><th class="p-4 text-xs uppercase">Tugas Instansi</th><th class="p-4 text-xs uppercase">WA</th><th class="p-4 text-xs uppercase">Status</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        function exportMentorsToPDF() {
+            html2canvas(document.getElementById('mentors-capture-area'), { scale: 2, backgroundColor: '#0f172a' }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png'), { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4'), imgWidth = 190, imgHeight = (canvas.height * imgWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 10, 15, imgWidth, imgHeight); pdf.save("Laporan_Pendamping.pdf");
+            });
+        }
+
+        // --- INISIALISASI ---
+        window.addEventListener('DOMContentLoaded', () => {
+            applyStaticIdentity();
+            navigate('beranda');
+        });
+    </script>
+</body>
+</html>
