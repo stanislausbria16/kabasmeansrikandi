@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="site-title-meta">KABAS MEAN - Panduan Resmi SRIKANDI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            background-color: #0f172a;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #f59e0b;
+        }
+        .nav-active {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #0f172a !important;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
+        }
+        @media print {
+            body { background: white !important; color: black !important; }
+            header, aside, #mobile-overlay, #admin-alert, footer, button, .no-print, .actions-column { display: none !important; }
+            main { overflow: visible !important; display: block !important; padding: 0 !important; }
+            #main-card-pane { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+        }
+    </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 flex flex-col min-h-screen custom-scrollbar">
+
+    <script>
+        // Konfigurasi Supabase
+        const SUPABASE_URL = "https://utbjxeoerucvuifshpil.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_skNjZDcDr46pBSVo0yxgLw_BkpddANP";
+        let supabaseClient = null;
+        try {
+            if (SUPABASE_URL && typeof supabase !== 'undefined') {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch(e) { console.error("Supabase load error:", e); }
+
+        // Variabel Global
+        let currentSection = 'beranda';
+        let isAdminLoggedIn = false;
+        let isMobileSidebarOpen = false;
+
+        // Nilai Default Sistem (Digunakan jika database kosong)
+        if (!localStorage.getItem('admin_username')) localStorage.setItem('admin_username', 'admin@srikandi.go.id');
+        if (!localStorage.getItem('admin_password')) localStorage.setItem('admin_password', 'srikandi2026');
+        if (!localStorage.getItem('site_logo_text')) localStorage.setItem('site_logo_text', 'KM');
+        if (!localStorage.getItem('site_name')) localStorage.setItem('site_name', 'KABAS MEAN');
+        if (!localStorage.getItem('site_subtitle')) localStorage.setItem('site_subtitle', 'PANDUAN APLIKASI SRIKANDI');
+        if (!localStorage.getItem('home_image_url')) localStorage.setItem('home_image_url', 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80');
+
+        const defaultMentors = [
+            { id: '1', name: 'Stanislaus Bria, S.Fil', nip: '199009162025061001', role: 'Admin Instansi', phone: '085126524343', status: 'Aktif' },
+        ];
+
+        const defaultHomeText = `<p class="mb-4">Selamat datang di <strong>Portal Informasi KABAS MEAN</strong>, wadah panduan terintegrasi untuk pendampingan teknis dan optimalisasi aplikasi SRIKANDI secara dinamis.</p><p>Silakan manfaatkan menu navigasi di sebelah kiri untuk mempelajari hak akses, manajemen sertifikat elektronik (TTE), serta pengelolaan naskah masuk dan keluar secara berkala.</p>`;
+        
+        const defaultContent = {
+            'beranda': { title: 'Selamat Datang', body: defaultHomeText, links: [] },
+            'informasi': { title: 'Informasi Umum SRIKANDI', body: `<p><strong>SRIKANDI (Sistem Informasi Kearsipan Dinamis Terintegrasi)</strong> adalah aplikasi kearsipan dinamis yang diluncurkan berdasarkan Peraturan Presiden Nomor 95 Tahun 2018 tentang Sistem Pemerintahan Berbasis Elektronik (SPBE).</p>`, links: [{ text: 'AKSES SRIKANDI', url: 'https://srikandi.arsip.go.id/auth/login' }] },
+            'admin-instansi': { title: 'Hak Akses: Admin Instansi', body: '<p>Admin Instansi memegang kontrol tingkat tertinggi pada lingkungan instansi masing-masing di aplikasi SRIKANDI.</p>', links: [] },
+            'admin-satker': { title: 'Hak Akses: Admin Satker', body: '<p>Admin Satker bertugas mengelola administrasi kearsipan tingkat Satuan Kerja.</p>', links: [] },
+            'tata-usaha': { title: 'Hak Akses: Tata Usaha (TU)', body: '<p>Peran Tata Usaha berfokus pada pengendalian kendali naskah keluar dan koordinasi verifikasi naskah.</p>', links: [] },
+            'pencatat-surat': { title: 'Hak Akses: Pencatat Surat', body: '<p>Bertanggung jawab terhadap registrasi seluruh dokumen fisik atau eksternal yang diterima instansi.</p>', links: [] },
+            'user': { title: 'Hak Akses: Pengguna / Staf', body: '<p>User menjalankan instruksi kerja harian, menerima disposisi, dan mendraf konsep naskah keluar.</p>', links: [] },
+            'tte-pengajuan': { title: 'TTE: Pengajuan Email Dinas', body: '<p>Langkah-langkah registrasi awal penerbitan email dinas resmi pemerintah.</p>', links: [] },
+            'tte-aktivasi': { title: 'TTE: Aktivasi Email Dinas', body: '<p>Panduan aktivasi kotak masuk email dinas baru via tautan aktivasi sistem.</p>', links: [] },
+            'tte-registrasi': { title: 'TTE: Registrasi Sertifikat BSrE', body: '<p>Prosedur sinkronisasi NIK dan penyiapan biometrik di sistem BSrE.</p>', links: [] },
+            'tte-passphrase': { title: 'TTE: Membuat Passphrase', body: '<p class="text-amber-500 font-medium">⚠️ PENTING: Passphrase adalah kunci sandi pembubuhan TTE.</p>', links: [] },
+            'tte-pembubuhan': { title: 'TTE: Pembubuhan Tanda Tangan', body: '<p>Tata cara input passphrase secara aman pada menu persetujuan naskah.</p>', links: [] },
+            'nm-registrasi': { title: 'Naskah Masuk: Registrasi Naskah', body: '<p>Layanan registrasi naskah masuk eksternal.</p>', links: [] },
+            'nm-daftar': { title: 'Naskah Masuk: Daftar Naskah', body: '<p>Menampilkan seluruh arsip surat masuk yang sudah diregistrasi.</p>', links: [] },
+            'nm-agenda': { title: 'Naskah Masuk: Agenda Surat', body: '<p>Fasilitas pembuatan agenda otomatis.</p>', links: [] },
+            'nm-tembusan': { title: 'Naskah Masuk: Tembusan Surat', body: '<p>Melihat dan mengarsipkan surat masuk tembusan.</p>', links: [] },
+            'nm-log': { title: 'Naskah Masuk: Log Riwayat Surat', body: '<p>Catatan lengkap mengenai waktu pendaftaran surat masuk.</p>', links: [] },
+            'nm-disposisi': { title: 'Naskah Masuk: Disposisi Surat', body: '<p>Menu bagi Pimpinan untuk mengarahkan dokumen naskah masuk.</p>', links: [] },
+            'nm-koordinasi': { title: 'Naskah Masuk: Koordinasi', body: '<p>Fitur koordinasi horizontal antar-staf.</p>', links: [] },
+            'nm-arahan': { title: 'Naskah Masuk: Arahan Pimpinan', body: '<p>Instruksi khusus yang dilekatkan langsung oleh pejabat.</p>', links: [] },
+            'nk-registrasi': { title: 'Naskah Keluar: Registrasi Draft', body: '<p>Langkah pembuatan konsep surat baru.</p>', links: [] },
+            'nk-daftar': { title: 'Naskah Keluar: Daftar Naskah', body: '<p>Melihat perkembangan draf naskah keluar yang sedang berjalan.</p>', links: [] },
+            'nk-pemberkasan': { title: 'Naskah Keluar: Pemberkasan', body: '<p>Proses penataan berkas dan pengelompokan naskah keluar.</p>', links: [] },
+            'nk-log': { title: 'Naskah Keluar: Log Naskah Keluar', body: '<p>Melacak jejak audit draf surat keluar.</p>', links: [] },
+            'nk-ttd': { title: 'Naskah Keluar: Persetujuan & TTD', body: '<p>Laman khusus pejabat penandatangan.</p>', links: [] },
+            'infografis': { title: 'Infografis Panduan SRIKANDI', body: '<p>Kumpulan materi infografis tata cara penggunaan sistem.</p>', links: [] },
+            'video': { title: 'Video Tutorial Penggunaan', body: '<p>Silakan akses berbagai video tutorial panduan SRIKANDI melalui tautan eksternal di bawah ini.</p>', links: [] }
+        };
+
+        let localStateContents = { ...defaultContent };
+
+        // Sinkronisasi Data dengan Supabase saat awal muat
+        async function syncDataFromSupabase() {
+            if (!supabaseClient) return;
+            try {
+                // Ambil Pengaturan Situs
+                const { data: settings } = await supabaseClient.from('site_settings').select('*');
+                if (settings && settings.length > 0) {
+                    settings.forEach(s => localStorage.setItem(s.key_name, s.key_value));
+                }
+
+                // Ambil Daftar Mentor
+                const { data: mentors } = await supabaseClient.from('mentors').select('*');
+                if (mentors && mentors.length > 0) {
+                    localStorage.setItem('local_mentors', JSON.stringify(mentors));
+                } else if (!localStorage.getItem('local_mentors')) {
+                    localStorage.setItem('local_mentors', JSON.stringify(defaultMentors));
+                }
+
+                // Ambil Konten Menu
+                const { data: menus } = await supabaseClient.from('menu_contents').select('*');
+                if (menus && menus.length > 0) {
+                    menus.forEach(m => {
+                        localStateContents[m.id] = { title: m.title, body: m.content, links: m.links || [] };
+                    });
+                }
+            } catch (err) {
+                console.warn("Gagal sinkronisasi Supabase. Menggunakan data lokal.", err);
+            }
+        }
+    </script>
+
+    <div id="toast-wrapper" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 text-amber-400">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+                <h4 class="font-bold text-lg text-white" id="confirm-title">Konfirmasi Tindakan</h4>
+            </div>
+            <p class="text-sm text-slate-400 leading-relaxed" id="confirm-message">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+            <div class="flex gap-2 justify-end pt-2">
+                <button id="confirm-btn-cancel" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg transition">Batal</button>
+                <button id="confirm-btn-ok" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition">Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="bg-slate-900 border-b border-slate-800 text-white flex justify-between items-center p-4 shadow-md md:hidden">
+        <div class="flex items-center space-x-3">
+            <div id="mobile-logo-wrapper" class="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center font-black text-slate-950 overflow-hidden shadow-lg shadow-amber-500/10">KM</div>
+            <div>
+                <span class="font-black text-sm block tracking-wide uppercase dynamic-site-name">KABAS MEAN</span>
+                <span class="text-[9px] text-slate-400 block tracking-wider dynamic-site-sub">PANDUAN APLIKASI SRIKANDI</span>
+            </div>
+        </div>
+        <button onclick="toggleMobileSidebar()" class="text-white hover:text-amber-500 transition focus:outline-none p-1">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+    </header>
+
+    <div class="flex flex-1 relative">
+
+        <aside id="sidebar" class="bg-slate-900 text-slate-300 w-72 flex-shrink-0 flex flex-col border-r border-slate-800 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-300 z-50 shadow-2xl md:overflow-hidden">
+            <div class="p-6 border-b border-slate-800/80 bg-slate-950/40 flex flex-col items-center text-center">
+                <div id="site-logo-container" class="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl mb-4 relative overflow-hidden group border border-slate-700 bg-slate-800">
+                    <span id="site-logo-txt" class="font-extrabold text-3xl text-amber-400">KM</span>
+                    <img id="site-logo-img" class="hidden w-full h-full object-cover absolute inset-0" src="" alt="Logo">
+                </div>
+                <h1 class="font-extrabold text-lg tracking-wider text-white dynamic-site-name uppercase">KABAS MEAN</h1>
+                <p class="text-[9px] text-amber-400 font-bold uppercase tracking-widest mt-1.5 dynamic-site-sub">PANDUAN APLIKASI SRIKANDI</p>
+                
+                <div id="admin-profile-badge" class="mt-4 flex items-center gap-2.5 p-2 bg-slate-900/60 border border-slate-800 rounded-xl w-full">
+                    <div class="w-9 h-9 rounded-lg bg-slate-800 overflow-hidden relative border border-slate-700 flex-shrink-0">
+                        <i data-lucide="user" class="w-5 h-5 text-slate-400 absolute inset-0 m-auto" id="avatar-placeholder-icon"></i>
+                        <img id="admin-profile-avatar" class="hidden w-full h-full object-cover absolute inset-0" src="" alt="Avatar">
+                    </div>
+                    <div class="text-left min-w-0 flex-1">
+                        <p class="text-xs font-bold text-slate-200 truncate" id="sidebar-admin-name">Umum / Tamu</p>
+                        <p class="text-[9px] text-emerald-400 font-semibold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span id="sidebar-admin-status">Online</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-grow overflow-y-auto p-4 space-y-1.5 custom-scrollbar bg-slate-900/50">
+                <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Layanan Utama</span>
+
+                <button onclick="navigate('beranda')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-beranda">
+                    <i data-lucide="home" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Beranda Utama</span>
+                </button>
+                <button onclick="navigate('informasi')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-informasi">
+                    <i data-lucide="info" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Informasi Umum</span>
+                </button>
+                <button onclick="navigate('mentors')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-mentors">
+                    <i data-lucide="users-2" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Pendamping Teknis</span>
+                </button>
+
+                <div>
+                    <button onclick="toggleDropdown('hak-akses')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="shield-alert" class="w-4 h-4 text-amber-500"></i> Hak Akses</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-hak-akses"></i>
+                    </button>
+                    <div id="drop-hak-akses" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800">
+                        <button onclick="navigate('admin-instansi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-admin-instansi">Admin Instansi</button>
+                        <button onclick="navigate('admin-satker')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-admin-satker">Admin Satker</button>
+                        <button onclick="navigate('tata-usaha')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tata-usaha">Tata Usaha</button>
+                        <button onclick="navigate('pencatat-surat')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-pencatat-surat">Pencatat Surat</button>
+                        <button onclick="navigate('user')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-user">User / Pengguna</button>
+                    </div>
+                </div>
+
+                <div>
+                    <button onclick="toggleDropdown('tte')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="fingerprint" class="w-4 h-4 text-amber-500"></i> TTE (Sertifikat)</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-tte"></i>
+                    </button>
+                    <div id="drop-tte" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800">
+                        <button onclick="navigate('tte-pengajuan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-pengajuan">Pengajuan Email Dinas</button>
+                        <button onclick="navigate('tte-aktivasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-aktivasi">Aktivasi Email Dinas</button>
+                        <button onclick="navigate('tte-registrasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-registrasi">Registrasi Sertifikat</button>
+                        <button onclick="navigate('tte-passphrase')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-passphrase">Buat Passphrase</button>
+                        <button onclick="navigate('tte-pembubuhan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-tte-pembubuhan">Pembubuhan TTE</button>
+                    </div>
+                </div>
+
+                <div>
+                    <button onclick="toggleDropdown('naskah-masuk')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="folder-input" class="w-4 h-4 text-amber-500"></i> Naskah Masuk</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-naskah-masuk"></i>
+                    </button>
+                    <div id="drop-naskah-masuk" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800 max-h-40 overflow-y-auto custom-scrollbar">
+                        <button onclick="navigate('nm-registrasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-registrasi">Registrasi Masuk</button>
+                        <button onclick="navigate('nm-daftar')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-daftar">Daftar Masuk</button>
+                        <button onclick="navigate('nm-agenda')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-agenda">Agenda</button>
+                        <button onclick="navigate('nm-tembusan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-tembusan">Tembusan</button>
+                        <button onclick="navigate('nm-log')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-log">Log Naskah Masuk</button>
+                        <button onclick="navigate('nm-disposisi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-disposisi">Disposisi</button>
+                        <button onclick="navigate('nm-koordinasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-koordinasi">Koordinasi</button>
+                        <button onclick="navigate('nm-arahan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nm-arahan">Arahan</button>
+                    </div>
+                </div>
+
+                <div>
+                    <button onclick="toggleDropdown('naskah-keluar')" class="flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition text-xs font-bold">
+                        <span class="flex items-center gap-3"><i data-lucide="folder-output" class="w-4 h-4 text-amber-500"></i> Naskah Keluar</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform" id="icon-naskah-keluar"></i>
+                    </button>
+                    <div id="drop-naskah-keluar" class="hidden pl-8 pr-2 py-1 space-y-1 bg-slate-950/20 rounded-xl mt-1 border-l border-slate-800">
+                        <button onclick="navigate('nk-registrasi')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-registrasi">Registrasi Keluar</button>
+                        <button onclick="navigate('nk-daftar')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-daftar">Daftar Keluar</button>
+                        <button onclick="navigate('nk-pemberkasan')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-pemberkasan">Pemberkasan</button>
+                        <button onclick="navigate('nk-log')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-log">Log Keluar</button>
+                        <button onclick="navigate('nk-ttd')" class="block w-full text-left py-1.5 px-2 text-xs text-slate-400 hover:text-amber-400" id="menu-btn-nk-ttd">Persetujuan & TTD</button>
+                    </div>
+                </div>
+
+                <button onclick="navigate('infografis')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-infografis">
+                    <i data-lucide="image" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Infografis Panduan</span>
+                </button>
+
+                <button onclick="navigate('video')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-video">
+                    <i data-lucide="clapperboard" class="w-4 h-4 text-amber-500"></i> <span class="text-xs font-bold">Video Tutorial</span>
+                </button>
+
+                <div id="admin-only-menus" class="hidden space-y-1.5 pt-3 mt-3 border-t border-slate-800/85">
+                    <span class="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Akses Administrator</span>
+                    <button onclick="navigate('pengaturan-akun')" class="flex items-center gap-3 w-full text-left px-3 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition duration-150" id="menu-btn-pengaturan-akun">
+                        <i data-lucide="sliders" class="w-4 h-4 text-sky-400"></i> <span class="text-xs font-bold">Pengaturan Web</span>
+                    </button>
+                </div>
+
+                <div class="pt-4 no-print">
+                    <a href="https://wa.me/message/I5DFQTSJBHCZL1" target="_blank" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-slate-950 bg-amber-400 hover:bg-amber-500 transition font-bold text-xs shadow-lg shadow-amber-500/10">
+                        <i data-lucide="phone-call" class="w-4 h-4"></i> <span>Hubungi Admin</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-slate-800/80 bg-slate-950/40 no-print">
+                <button id="admin-nav-btn" onclick="navigate('login-admin')" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 rounded-xl text-xs font-bold border border-slate-700/60 transition duration-150">
+                    <i data-lucide="key-round" class="w-4 h-4"></i> <span>Login Administrator</span>
+                </button>
+            </div>
+        </aside>
+
+        <div id="mobile-overlay" onclick="toggleMobileSidebar()" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-30 md:hidden"></div>
+
+        <main class="flex-grow flex flex-col min-h-0 overflow-y-auto overflow-x-hidden bg-[#0d121f] custom-scrollbar">
+            
+            <div id="admin-alert" class="hidden bg-emerald-950/80 backdrop-blur-md border-b border-emerald-800/60 py-3 px-6 text-xs text-emerald-300 flex justify-between items-center flex-shrink-0 animate-fade-in no-print">
+                <span class="flex items-center gap-2.5 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> Akses Admin Aktif. Anda dapat memodifikasi konten secara langsung.
+                </span>
+                <button onclick="logoutAdmin()" class="bg-rose-500 hover:bg-rose-600 text-white font-extrabold px-3.5 py-1.5 rounded-lg text-xs transition shadow-md shadow-rose-500/10">Keluar</button>
+            </div>
+
+            <div class="flex-grow p-4 md:p-8 flex justify-center">
+                <div class="max-w-4xl w-full bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-2xl p-6 md:p-10 flex flex-col justify-between" id="main-card-pane">
+                    <div id="content-container" class="space-y-6">
+                        </div>
+                </div>
+            </div>
+
+            <footer class="bg-slate-950 text-slate-500 text-center py-6 text-xs border-t border-slate-800/80 flex-shrink-0">
+                <p>&copy; 2026 <span class="dynamic-site-name text-slate-300 font-bold">KABAS MEAN</span> - Kanal Bantuan & Media Panduan SRIKANDI</p>
+                <p class="mt-1">Dibuat dengan penuh dedikasi: <span class="text-amber-500 font-bold">Stanislaus Bria, S.Fil</span></p>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const wrapper = document.getElementById('toast-wrapper');
+            const toast = document.createElement('div');
+            toast.className = `flex items-center gap-3 p-4 rounded-xl shadow-xl transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto min-w-[280px] max-w-sm border ${type === 'success' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-800' : 'bg-rose-950/90 text-rose-300 border-rose-800'}`;
+            const icon = type === 'success' ? 'check-circle' : 'alert-circle';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5 flex-shrink-0 ${type === 'success' ? 'text-emerald-400' : 'text-rose-400'}"></i><span class="text-xs font-semibold leading-relaxed">${message}</span>`;
+            wrapper.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => { toast.classList.add('translate-y-2', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 3500);
+        }
+
+        function showModalConfirm(title, message, onConfirm) {
+            const modal = document.getElementById('custom-confirm-modal');
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            modal.classList.remove('hidden');
+            const cleanUp = () => modal.classList.add('hidden');
+            document.getElementById('confirm-btn-cancel').onclick = () => cleanUp();
+            document.getElementById('confirm-btn-ok').onclick = () => { onConfirm(); cleanUp(); };
+        }
+
+        function applyDynamicIdentity() {
+            const logoText = localStorage.getItem('site_logo_text') || 'KM';
+            const name = localStorage.getItem('site_name') || 'KABAS MEAN';
+            const sub = localStorage.getItem('site_subtitle') || 'PANDUAN APLIKASI SRIKANDI';
+            document.querySelectorAll('.dynamic-site-name').forEach(el => el.innerText = name);
+            document.querySelectorAll('.dynamic-site-sub').forEach(el => el.innerText = sub);
+            document.getElementById('site-title-meta').innerText = name + " - " + sub;
+
+            const logoImgUrl = localStorage.getItem('site_logo_img');
+            const txtLogo = document.getElementById('site-logo-txt');
+            const imgLogo = document.getElementById('site-logo-img');
+            const mobileLogo = document.getElementById('mobile-logo-wrapper');
+            if (logoImgUrl) {
+                txtLogo.classList.add('hidden'); imgLogo.src = logoImgUrl; imgLogo.classList.remove('hidden');
+                if (mobileLogo) mobileLogo.innerHTML = `<img class="w-full h-full object-cover" src="${logoImgUrl}" alt="Logo">`;
+            } else {
+                txtLogo.classList.remove('hidden'); txtLogo.innerText = logoText; imgLogo.classList.add('hidden');
+                if (mobileLogo) mobileLogo.innerHTML = logoText;
+            }
+
+            const profileImgUrl = localStorage.getItem('admin_profile_img');
+            const avatarPlaceholder = document.getElementById('avatar-placeholder-icon');
+            const avatarImg = document.getElementById('admin-profile-avatar');
+            if (profileImgUrl) {
+                avatarPlaceholder.classList.add('hidden'); avatarImg.src = profileImgUrl; avatarImg.classList.remove('hidden');
+            } else {
+                avatarPlaceholder.classList.remove('hidden'); avatarImg.classList.add('hidden');
+            }
+
+            const currentUsername = localStorage.getItem('admin_username');
+            const adminStatusLabel = document.getElementById('sidebar-admin-status');
+            if (isAdminLoggedIn) {
+                document.getElementById('sidebar-admin-name').innerText = currentUsername.split('@')[0];
+                adminStatusLabel.innerText = "Administrator"; adminStatusLabel.className = "text-[9px] font-semibold flex items-center gap-1 text-amber-400";
+            } else {
+                document.getElementById('sidebar-admin-name').innerText = "Umum / Tamu";
+                adminStatusLabel.innerText = "Online"; adminStatusLabel.className = "text-[9px] font-semibold flex items-center gap-1 text-emerald-400";
+            }
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar'), overlay = document.getElementById('mobile-overlay');
+            isMobileSidebarOpen = !isMobileSidebarOpen;
+            if (isMobileSidebarOpen) { sidebar.classList.remove('-translate-x-full'); overlay.classList.remove('hidden'); } 
+            else { sidebar.classList.add('-translate-x-full'); overlay.classList.add('hidden'); }
+        }
+
+        function toggleDropdown(id) {
+            const elem = document.getElementById('drop-' + id), icon = document.getElementById('icon-' + id);
+            if (elem.classList.contains('hidden')) { elem.classList.remove('hidden'); icon.style.transform = 'rotate(180deg)'; } 
+            else { elem.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; }
+        }
+
+        function navigate(section) {
+            currentSection = section;
+            document.querySelectorAll('aside nav button').forEach(btn => btn.classList.remove('nav-active'));
+            const activeBtn = document.getElementById('menu-btn-' + section);
+            if (activeBtn) activeBtn.classList.add('nav-active');
+            if (isMobileSidebarOpen) toggleMobileSidebar();
+            renderContent();
+        }
+
+        function renderContent() {
+            const container = document.getElementById('content-container');
+            if (currentSection === 'login-admin') { container.innerHTML = renderLoginForm(); lucide.createIcons(); return; }
+            if (currentSection === 'pengaturan-akun') { container.innerHTML = renderAccountSettingsForm(); lucide.createIcons(); return; }
+            if (currentSection === 'mentors') { container.innerHTML = renderMentorsCRUD(); lucide.createIcons(); return; }
+
+            let pageData = localStateContents[currentSection] || { title: 'Modul Belum Terdaftar', body: '<p>Konten sedang dipersiapkan.</p>', links: [] };
+            if (currentSection === 'beranda') {
+                pageData.body = localStorage.getItem('home_text_default') || defaultHomeText;
+            }
+
+            let html = `<div class="space-y-6">`;
+            if (currentSection === 'beranda' && localStorage.getItem('home_image_url')) {
+                html += `
+                    <div class="w-full h-52 md:h-80 rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative group">
+                        <img src="${localStorage.getItem('home_image_url')}" class="w-full h-full object-cover group-hover:scale-105 transition duration-700">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent p-6 flex flex-col justify-end">
+                            <h3 class="text-xl md:text-2xl font-black text-white uppercase">${pageData.title}</h3>
+                        </div>
+                    </div>`;
+            }
+            html += `
+                <div class="border-b border-slate-800/80 pb-4 flex justify-between items-center">
+                    <h2 class="text-xl md:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+                        <span class="w-1.5 h-6 bg-amber-500 rounded-full inline-block"></span> ${pageData.title}
+                    </h2>
+                    ${isAdminLoggedIn ? `<button onclick="openEditor('${currentSection}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit Konten</button>` : ''}
+                </div>
+                <div class="prose prose-invert max-w-none text-slate-300 leading-relaxed text-sm md:text-base space-y-4">${pageData.body}</div>`;
+
+            if (pageData.links && pageData.links.length > 0) {
+                html += `<div class="pt-6 border-t border-slate-800/85 flex flex-wrap gap-3">`;
+                pageData.links.forEach(link => {
+                    html += `<a href="${link.url}" target="_blank" class="px-5 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-700 text-amber-400 font-extrabold text-xs rounded-xl inline-flex items-center gap-2 transition"><span>${link.text}</span> <i data-lucide="external-link" class="w-4 h-4"></i></a>`;
+                });
+                html += `</div>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html; lucide.createIcons();
+        }
+
+        // --- SISTEM PENDAMPING (MENTORS) ---
+        function renderMentorsCRUD() {
+            const list = JSON.parse(localStorage.getItem('local_mentors') || '[]');
+            let rows = '';
+            list.forEach(m => {
+                rows += `
+                    <tr class="border-b border-slate-800/60 hover:bg-slate-900/30 text-xs">
+                        <td class="p-4 font-bold text-slate-200">${m.name}</td>
+                        <td class="p-4 text-slate-400 font-mono">${m.nip}</td>
+                        <td class="p-4 text-slate-300">${m.role}</td>
+                        <td class="p-4 font-semibold text-amber-400">${m.phone}</td>
+                        <td class="p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${m.status === 'Aktif' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}">${m.status}</span></td>
+                        ${isAdminLoggedIn ? `<td class="p-4 text-right space-x-1.5 actions-column"><button onclick="openMentorForm('${m.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button><button onclick="deleteMentor('${m.id}')" class="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1.5 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button></td>` : ''}
+                    </tr>`;
+            });
+            if (list.length === 0) rows = `<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada tim pendamping.</td></tr>`;
+
+            return `
+                <div class="space-y-6" id="mentors-capture-area">
+                    <div class="border-b border-slate-800 pb-4 flex justify-between items-center">
+                        <h2 class="text-xl md:text-2xl font-black text-white flex items-center gap-2"><span class="w-1.5 h-6 bg-amber-500 rounded-full"></span> Daftar Pendamping Teknis</h2>
+                        <div class="flex gap-2 no-print">
+                            <button onclick="exportMentorsToPDF()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-bold rounded-xl flex items-center gap-2 border border-slate-700"><i data-lucide="printer" class="w-4 h-4"></i> Cetak</button>
+                            ${isAdminLoggedIn ? `<button onclick="openMentorForm()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-xl flex items-center gap-1.5"><i data-lucide="user-plus-2" class="w-4 h-4"></i> Tambah</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="border border-slate-850 bg-slate-950/20 rounded-2xl overflow-hidden shadow-xl">
+                        <table class="w-full text-left border-collapse">
+                            <thead><tr class="bg-slate-950 text-slate-400 font-bold border-b border-slate-800"><th class="p-4 text-xs uppercase">Nama / Jabatan</th><th class="p-4 text-xs uppercase">NIP</th><th class="p-4 text-xs uppercase">Tugas Instansi</th><th class="p-4 text-xs uppercase">WA</th><th class="p-4 text-xs uppercase">Status</th>${isAdminLoggedIn ? '<th class="p-4 text-xs uppercase text-right actions-column">Aksi</th>' : ''}</tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                    <div id="mentor-form-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+                            <div class="border-b border-slate-800 pb-2 flex justify-between items-center"><h3 class="font-extrabold text-white text-base" id="mentor-modal-title">Formulir Pendamping</h3><button onclick="closeMentorForm()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+                            <form id="mentor-data-form" onsubmit="saveMentor(event)" class="space-y-4 text-xs">
+                                <input type="hidden" id="mentor-form-id">
+                                <div><label class="block font-bold text-slate-300 mb-1">NAMA LENGKAP</label><input type="text" id="mentor-form-name" required class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></div>
+                                <div><label class="block font-bold text-slate-300 mb-1">NIP</label><input type="text" id="mentor-form-nip" required class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></div>
+                                <div><label class="block font-bold text-slate-300 mb-1">JABATAN</label><input type="text" id="mentor-form-role" required class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></div>
+                                <div><label class="block font-bold text-slate-300 mb-1">NOMOR WA</label><input type="text" id="mentor-form-phone" required class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></div>
+                                <div><label class="block font-bold text-slate-300 mb-1">STATUS</label><select id="mentor-form-status" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"><option value="Aktif">Aktif</option><option value="Tidak Aktif">Tidak Aktif</option></select></div>
+                                <div class="flex gap-2 justify-end pt-3 border-t border-slate-800"><button type="button" onclick="closeMentorForm()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-amber-500 text-slate-950 font-black rounded-lg">Simpan</button></div>
+                            </form>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function openMentorForm(id = '') {
+            const modal = document.getElementById('mentor-form-modal');
+            document.getElementById('mentor-data-form').reset();
+            document.getElementById('mentor-form-id').value = id;
+            if (id) {
+                const found = JSON.parse(localStorage.getItem('local_mentors') || '[]').find(m => m.id === id);
+                if (found) {
+                    document.getElementById('mentor-form-name').value = found.name;
+                    document.getElementById('mentor-form-nip').value = found.nip;
+                    document.getElementById('mentor-form-role').value = found.role;
+                    document.getElementById('mentor-form-phone').value = found.phone;
+                    document.getElementById('mentor-form-status').value = found.status;
+                }
+            }
+            modal.classList.remove('hidden'); lucide.createIcons();
+        }
+        function closeMentorForm() { document.getElementById('mentor-form-modal').classList.add('hidden'); }
+
+        async function saveMentor(e) {
+            e.preventDefault();
+            const id = document.getElementById('mentor-form-id').value || Date.now().toString();
+            const mentorData = { id, name: document.getElementById('mentor-form-name').value, nip: document.getElementById('mentor-form-nip').value, role: document.getElementById('mentor-form-role').value, phone: document.getElementById('mentor-form-phone').value, status: document.getElementById('mentor-form-status').value };
+
+            let list = JSON.parse(localStorage.getItem('local_mentors') || '[]');
+            const index = list.findIndex(m => m.id === id);
+            if (index !== -1) list[index] = mentorData; else list.push(mentorData);
+            localStorage.setItem('local_mentors', JSON.stringify(list));
+
+            // Simpan ke Supabase
+            if (supabaseClient) await supabaseClient.from('mentors').upsert(mentorData);
+            
+            showToast("Data pendamping berhasil disimpan!");
+            closeMentorForm(); renderContent();
+        }
+
+        async function deleteMentor(id) {
+            showModalConfirm("Hapus Data", "Yakin ingin menghapus?", async () => {
+                let list = JSON.parse(localStorage.getItem('local_mentors') || '[]').filter(m => m.id !== id);
+                localStorage.setItem('local_mentors', JSON.stringify(list));
+                if (supabaseClient) await supabaseClient.from('mentors').delete().eq('id', id);
+                showToast("Data pendamping terhapus!"); renderContent();
+            });
+        }
+
+        function exportMentorsToPDF() {
+            html2canvas(document.getElementById('mentors-capture-area'), { scale: 2, backgroundColor: '#0f172a' }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png'), { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4'), imgWidth = 190, imgHeight = (canvas.height * imgWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 10, 15, imgWidth, imgHeight); pdf.save("Laporan_Pendamping.pdf");
+            });
+        }
+
+        // --- SISTEM AKUN & PENGATURAN ---
+        function renderLoginForm() {
+            return `
+                <div class="max-w-md mx-auto py-6 space-y-6">
+                    <div class="text-center space-y-1"><i data-lucide="lock-keyhole" class="mx-auto w-12 h-12 text-amber-500"></i><h2 class="text-xl font-extrabold text-white">Otentikasi Administrator</h2></div>
+                    <div class="space-y-4 bg-slate-950/45 p-6 rounded-2xl border border-slate-800">
+                        <div><label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Username / Email</label><input type="text" id="admin-email" required class="w-full bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl text-white"></div>
+                        <div><label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Password</label><input type="password" id="admin-pass" required class="w-full bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl text-white"></div>
+                        <button onclick="loginAdminAction()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-3.5 rounded-xl">Masuk Sistem</button>
+                    </div>
+                </div>`;
+        }
+
+        function loginAdminAction() {
+            if (document.getElementById('admin-email').value === localStorage.getItem('admin_username') && document.getElementById('admin-pass').value === localStorage.getItem('admin_password')) {
+                isAdminLoggedIn = true; setAdminUI(true); showToast("Berhasil Login!"); navigate('beranda');
+            } else { showToast("Kredensial salah!", "error"); }
+        }
+
+        function renderAccountSettingsForm() {
+            return `
+                <div class="space-y-8 max-w-xl mx-auto">
+                    <div class="bg-slate-950/45 border border-slate-800 rounded-2xl p-6 space-y-4">
+                        <div class="border-b border-slate-850 pb-2.5 flex items-center gap-2"><i data-lucide="paint-bucket" class="w-5 h-5 text-amber-500"></i><h3 class="text-base font-bold text-white">Identitas Visual Website</h3></div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><button onclick="document.getElementById('site-logo-input').click()" class="w-full bg-slate-850 border border-slate-700 text-slate-300 py-2 rounded-xl text-xs font-bold">Pilih Logo Baru</button><input type="file" id="site-logo-input" onchange="processLogoUpload(event)" accept="image/*" class="hidden"></div>
+                            <div><button onclick="document.getElementById('profile-avatar-input').click()" class="w-full bg-slate-850 border border-slate-700 text-slate-300 py-2 rounded-xl text-xs font-bold">Foto Profil Baru</button><input type="file" id="profile-avatar-input" onchange="processProfileUpload(event)" accept="image/*" class="hidden"></div>
+                        </div>
+                        <div class="space-y-4">
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1.5">Teks Singkatan (Maks 3)</label><input type="text" id="cfg-logo-text" value="${localStorage.getItem('site_logo_text')}" maxlength="3" class="w-full bg-slate-900 border border-slate-850 p-2.5 rounded-xl text-white"></div>
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1.5">Nama Portal</label><input type="text" id="cfg-site-name" value="${localStorage.getItem('site_name')}" class="w-full bg-slate-900 border border-slate-850 p-2.5 rounded-xl text-white"></div>
+                            <div><label class="block text-xs font-bold text-slate-300 mb-1.5">Subjudul</label><input type="text" id="cfg-site-sub" value="${localStorage.getItem('site_subtitle')}" class="w-full bg-slate-900 border border-slate-850 p-2.5 rounded-xl text-white"></div>
+                        </div>
+                        <button onclick="saveIdentityConfig()" class="w-full bg-amber-500 text-slate-950 font-extrabold py-3 rounded-xl">Terapkan Konfigurasi</button>
+                    </div>
+                </div>`;
+        }
+
+        async function processBase64Upload(e, keyName, successMsg) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                const base64Url = evt.target.result;
+                localStorage.setItem(keyName, base64Url);
+                if (supabaseClient) await supabaseClient.from('site_settings').upsert({ key_name: keyName, key_value: base64Url });
+                applyDynamicIdentity(); showToast(successMsg);
+            };
+            reader.readAsDataURL(file);
+        }
+        function processLogoUpload(e) { processBase64Upload(e, 'site_logo_img', "Logo instansi kustom diterapkan!"); }
+        function processProfileUpload(e) { processBase64Upload(e, 'admin_profile_img', "Foto profil terpasang!"); }
+
+        async function saveIdentityConfig() {
+            const updates = [
+                { key_name: 'site_logo_text', key_value: document.getElementById('cfg-logo-text').value.trim() },
+                { key_name: 'site_name', key_value: document.getElementById('cfg-site-name').value.trim() },
+                { key_name: 'site_subtitle', key_value: document.getElementById('cfg-site-sub').value.trim() }
+            ];
+            
+            updates.forEach(u => localStorage.setItem(u.key_name, u.key_value));
+            if (supabaseClient) {
+                for (let u of updates) await supabaseClient.from('site_settings').upsert(u);
+            }
+            applyDynamicIdentity(); showToast("Konfigurasi visual berhasil diterapkan!"); renderContent();
+        }
+
+        function setAdminUI(active) {
+            const btn = document.getElementById('admin-nav-btn'), alertBox = document.getElementById('admin-alert'), adminMenus = document.getElementById('admin-only-menus');
+            if (active) {
+                btn.innerHTML = `<i data-lucide="user-minus" class="w-4 h-4 text-rose-400"></i><span>Keluar Kelola</span>`; btn.onclick = () => logoutAdmin();
+                alertBox.classList.remove('hidden'); adminMenus.classList.remove('hidden');
+            } else {
+                btn.innerHTML = `<i data-lucide="key-round" class="w-4 h-4 text-amber-500"></i><span>Login Administrator</span>`; btn.onclick = () => navigate('login-admin');
+                alertBox.classList.add('hidden'); adminMenus.classList.add('hidden');
+            }
+            applyDynamicIdentity(); lucide.createIcons();
+        }
+
+        function logoutAdmin() { isAdminLoggedIn = false; setAdminUI(false); showToast("Sesi administrator berakhir."); navigate('beranda'); }
+
+        // --- SISTEM EDITOR KONTEN ---
+        function openEditor(slug) {
+            const currentObj = localStateContents[slug] || { title: '', body: '', links: [] };
+            const isHome = slug === 'beranda';
+            const linksText = currentObj.links ? currentObj.links.map(l => `${l.text}|${l.url}`).join("\n") : "";
+            
+            document.getElementById('content-container').innerHTML = `
+                <div class="space-y-6">
+                    <div class="border-b border-slate-800 pb-3 flex items-center gap-2"><i data-lucide="edit" class="w-5 h-5 text-amber-500"></i><h3 class="font-extrabold text-white text-base">Modifikasi Halaman</h3></div>
+                    <div class="space-y-4 text-xs">
+                        ${isHome ? `<div><label class="block font-bold text-slate-300 mb-1">URL Gambar Banner Beranda</label><input type="text" id="edit-home-img" value="${localStorage.getItem('home_image_url')}" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></div>` : ''}
+                        <div><label class="block font-bold text-slate-300 mb-1">Judul Sub-Panduan</label><input type="text" id="edit-title" value="${currentObj.title}" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white"></div>
+                        <div><label class="block font-bold text-slate-300 mb-1">Isi Panduan (Bisa HTML)</label><textarea id="edit-body" rows="8" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white font-mono">${currentObj.body}</textarea></div>
+                        ${!isHome ? `<div><label class="block font-bold text-slate-300 mb-1">Tombol Link Eksternal (Format: Nama|Link)</label><textarea id="edit-links" rows="3" placeholder="Contoh: Tonton Video|https://youtube.com/..." class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-white font-mono">${linksText}</textarea></div>` : ''}
+                    </div>
+                    <div class="flex gap-2 justify-end pt-4"><button onclick="renderContent()" class="px-4 py-2 bg-slate-800 text-white rounded-xl">Batal</button><button onclick="savePageData('${slug}')" class="px-5 py-2 bg-amber-500 text-slate-950 font-extrabold rounded-xl">Simpan Konten</button></div>
+                </div>`;
+            lucide.createIcons();
+        }
+
+        async function savePageData(slug) {
+            const title = document.getElementById('edit-title').value, body = document.getElementById('edit-body').value;
+            let links = [];
+
+            if (slug === 'beranda') {
+                const imgUrl = document.getElementById('edit-home-img').value.trim();
+                localStorage.setItem('home_image_url', imgUrl);
+                localStorage.setItem('home_text_default', body);
+                if (supabaseClient) await supabaseClient.from('site_settings').upsert({ key_name: 'home_image_url', key_value: imgUrl });
+            } else {
+                const linksRaw = document.getElementById('edit-links').value;
+                if (linksRaw.trim()) linksRaw.split("\n").forEach(line => { const parts = line.split("|"); if (parts.length >= 2) links.push({ text: parts[0].trim(), url: parts[1].trim() }); });
+            }
+
+            localStateContents[slug] = { title, body, links };
+            
+            // Simpan ke database Supabase
+            if (supabaseClient) await supabaseClient.from('menu_contents').upsert({ id: slug, title, content: body, links });
+            
+            showToast("Pembaruan materi sukses dipublikasi!"); renderContent();
+        }
+
+        // --- INISIALISASI ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            await syncDataFromSupabase();
+            applyDynamicIdentity();
+            navigate('beranda');
+        });
+    </script>
+</body>
+</html>
